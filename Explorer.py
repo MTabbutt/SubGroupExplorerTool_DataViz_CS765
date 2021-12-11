@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from sklearn.mixture import GaussianMixture
 
 
 viridis_colors = ['#fde725', '#5ec962', '#21918c', '#3b528b', '#440154']
@@ -32,7 +33,7 @@ class Explorer:
     
        
         
-##### Correlations: 
+##### Correlations #####
 
 
     def getCorrelation(self, col1, col2):
@@ -58,6 +59,8 @@ class Explorer:
             correlation_matrix.append(array)
         
         return pd.DataFrame(correlation_matrix, columns=self.dataset.columns, index=self.dataset.columns)
+    
+    
     
     def getMaxCorrelation(self, threshold=False):
         """
@@ -108,6 +111,7 @@ class Explorer:
         
         return [(), ()]    
     
+    
 
     def plotCorrelation(self, col1, col2, alpha=.75):
         
@@ -129,6 +133,8 @@ class Explorer:
         
         return 
     
+    
+    
     def printCorrelationMatrix(self, correlation_matrix):
         
         pd.DataFrame(correlation_matrix)
@@ -137,13 +143,74 @@ class Explorer:
     
     
     
-##### Distribution Statistics:   
+##### Distribution Statistics ##### 
+    
+    
+    def getSummaryStats(self, col1, printStats=True):
+
+        x = ~np.isnan(self.dataset[col1])
+        z = self.dataset[col1] != np.Inf
+        a = x & z 
+        
+        num = len(self.dataset[col1][a])
+        ran = abs(max(self.dataset[col1][a]) - min(self.dataset[col1][a]))
+        tmean = stats.tmean(self.dataset[col1][a])
+        variance = stats.tvar(self.dataset[col1][a])
+        skew = stats.skew(self.dataset[col1][a])
+        
+        if printStats:
+            print("num: ", round(num, 6), ", range: ", round(ran, 6), ", mean: ", round(tmean, 6), 
+                  ", variance: ", round(variance, 6), ", skew: ", round(skew, 6))
+        
+        return  (num, ran, tmean, variance, skew)
+    
+    
+    def getSummaryMatrix(self, printStats=False):
+        
+        stats = ["counts", "range", "mean", "variance", "skew"]
+        summary_matrix = []
+        
+        for col1 in self.dataset.columns:
+            
+            summary_matrix.append(self.getSummaryStats(col1, printStats=printStats))
+        
+
+        return pd.DataFrame(summary_matrix, columns=stats, index=self.dataset.columns)
     
     
     
-    
-    
-    
+##### Clustering #####    
+
+
+    def getClustering(self, ncomponents=7, reg_covar=.0001):
+        
+
+        self.gm = GaussianMixture(n_components=ncomponents, reg_covar=reg_covar).fit(self.getSummaryMatrix())
+        
+        return self.gm.predict(self.getSummaryMatrix())
+        
+        
+        
+    def printClusters(self, ncomponents=7, reg_covar=.0001):
+        
+        arr = self.getClustering()
+        clusters = []
+
+        for n in range(ncomponents):
+            clusters.append(list(self.dataset.columns[arr == n]))
+
+        return clusters
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     
     
     
