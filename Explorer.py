@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 viridis_colors = ['#fde725', '#5ec962', '#21918c', '#3b528b', '#440154']
 
 
-
 class Explorer:
     
     """
@@ -22,10 +21,20 @@ class Explorer:
           
         """
         self.dataset = pd.read_csv(dataset_path, skiprows=skip_rows)
-        #self.summarystats = getSummaryStats(self)
+        self.correlation_matrix = self.getCorrelationMatrix()
         
         
         
+    def getDataFrame(self):
+        
+        return self.dataset
+    
+    
+       
+        
+##### Correlations: 
+
+
     def getCorrelation(self, col1, col2):
 
         x, y = ~np.isnan(self.dataset[col1]), ~np.isnan(self.dataset[col2])
@@ -50,15 +59,57 @@ class Explorer:
         
         return pd.DataFrame(correlation_matrix, columns=self.dataset.columns, index=self.dataset.columns)
     
-    
-    
-    def getDataFrame(self):
+    def getMaxCorrelation(self, threshold=False):
+        """
+        Returns the maximum and minimum values if no threshold set, otherwise returns the max 
+        and min above/below that threshold magnitude. 
+        """
         
-        return self.dataset
-    
+        if threshold:
+            maxVal, minVal = [], []
+            maxcol1, maxcal2, mincol1, mincol2 = [], [], [], []
+            
+            for col in self.correlation_matrix:
+                
+                for i, val in enumerate(self.correlation_matrix[col]):
+                    
+                    if val > threshold and val < .999:
+                        maxVal.append(val)
+                        maxcol1.append(self.correlation_matrix.columns[i])
+                        maxcal2.append(col)
+                        
+                    if val < -threshold and val > -.999:
+                        minVal.append(val)
+                        mincol1.append(self.correlation_matrix.columns[i])
+                        mincol2.append(col)
+                        
+            return [(maxcol1, maxcal2, maxVal), (mincol1, mincol2, minVal)]
+        
+        else:
+            maxVal, minVal = 0, 0
+            maxcol1, maxcal2, mincol1, mincol2 = "", "", "", ""
+            
+            for col in self.correlation_matrix:
+                
+                for i, val in enumerate(self.correlation_matrix[col]):
+                    
+                    if val > maxVal and val < .999:
+                        maxVal = val
+                        maxcol1 = self.correlation_matrix.columns[i]
+                        maxcal2 = col
+                        
+                    if val < minVal and val > -.999:
+                        minVal = val
+                        mincol1 = self.correlation_matrix.columns[i]
+                        mincol2 = col
+                    
+        
+            return [(maxcol1, maxcal2, maxVal), (mincol1, mincol2, minVal)]  
+        
+        return [(), ()]    
     
 
-    def plotCorrelation(self, col1, col2):
+    def plotCorrelation(self, col1, col2, alpha=.75):
         
         x, y = ~np.isnan(self.dataset[col1]), ~np.isnan(self.dataset[col2])
         z, w = self.dataset[col1] != np.Inf, self.dataset[col2] != np.Inf
@@ -68,7 +119,7 @@ class Explorer:
         
         plt.figure(figsize=(11, 7))
 
-        plt.scatter(self.dataset[col1][a], self.dataset[col2][a], c=viridis_colors[3], alpha=.85)
+        plt.scatter(self.dataset[col1][a], self.dataset[col2][a], c=viridis_colors[3], alpha=alpha)
         plt.xlabel(col1, fontsize=16)
         plt.ylabel(col2, fontsize=16)
         plt.xticks(fontsize=14)
@@ -86,7 +137,7 @@ class Explorer:
     
     
     
-    
+##### Distribution Statistics:   
     
     
     
