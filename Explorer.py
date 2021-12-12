@@ -2,13 +2,15 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from sklearn.mixture import GaussianMixture
+import math
 
 plt.rcParams.update({'legend.fontsize':'medium', 'font.size':14.0,
-    'axes.titlesize':'large', 'axes.labelsize':'x-large',
-    'xtick.major.size':7,'xtick.minor.size':4,'xtick.major.pad':8,'xtick.minor.pad':8,'xtick.labelsize':'large',
+    'axes.titlesize':'large', 'axes.labelsize':'medium',
+    'xtick.major.size':7,'xtick.minor.size':4,'xtick.major.pad':8,'xtick.minor.pad':8,'xtick.labelsize':'medium',
     'xtick.minor.width':1.0,'xtick.major.width':0.5,
-    'ytick.major.size':7,'ytick.minor.size':4,'ytick.major.pad':8,'ytick.minor.pad':8,'ytick.labelsize':'large',
+    'ytick.major.size':7,'ytick.minor.size':4,'ytick.major.pad':8,'ytick.minor.pad':8,'ytick.labelsize':'medium',
     'ytick.minor.width':1.0,'ytick.major.width':1.0})
 
 
@@ -22,15 +24,16 @@ class Explorer:
     
     """
     
-    def __init__(self, dataset_path, skip_rows=[1, 3]):
+    def __init__(self, dataset_path):
         
         """
           skip_rows:     skip 2 rows: the first is an extra name column and the second is the data type column
           
         """
-        self.dataset = pd.read_csv(dataset_path, skiprows=skip_rows)
+        self.dataset = pd.read_csv(dataset_path, skiprows=[0])
         self.correlation_matrix = self.getCorrelationMatrix()
-        
+        self.categories = pd.read_csv(dataset_path, nrows=1)
+        #self.subgroupmatrix 
         
         
     def getDataFrame(self):
@@ -39,9 +42,10 @@ class Explorer:
     
     
     
-    def setDataFrame(self, df):
+    def setDataFrame(self, drop=[]):
         
         self.dataset = df
+        self.categories = categories
         
         return self.dataset
     
@@ -192,8 +196,9 @@ class Explorer:
             
             summary_matrix.append(self.getSummaryStats(col1, printStats=printStats))
         
+        self.summarystats = pd.DataFrame(summary_matrix, columns=stats, index=self.dataset.columns)
 
-        return pd.DataFrame(summary_matrix, columns=stats, index=self.dataset.columns)
+        return self.summarystats
     
     
     
@@ -253,7 +258,7 @@ class Explorer:
 
         axs[1].annotate("Range: " + str(round(summaryStats[1], 3)), (1.1, max(x)), xycoords="data")
         axs[1].annotate("Mean: " + str(round(summaryStats[2], 3)), (1.1, summaryStats[2]), xycoords="data")
-        axs[1].annotate("StDev: " + str(round(summaryStats[3]**(.5), 3)), (1.1, summaryStats[3]**(.5)), xycoords="data")
+        axs[1].annotate("StDev: " + str(round(summaryStats[3]**(.5), 3)), (1.1, min(x)+summaryStats[3]**(.5)), xycoords="data")
 
         return
     
@@ -301,11 +306,11 @@ class Explorer:
 
         axs[2].annotate("Range: " + str(round(summaryStats1[1], 3)), (1.2, max(x1)), xycoords="data")
         axs[2].annotate("Mean: " + str(round(summaryStats1[2], 3)), (1.2, summaryStats1[2]), xycoords="data")
-        axs[2].annotate("StDev: " + str(round(summaryStats1[3]**(.5), 3)), (1.2, summaryStats1[3]**(.5)*.75), xycoords="data")
+        axs[2].annotate("StDev: " + str(round(summaryStats1[3]**(.5), 3)), (1.2, min(x1)+summaryStats1[3]**(.5)*.75), xycoords="data")
         
         axs[2].annotate("Range: " + str(round(summaryStats2[1], 3)), (3.2, max(x2)), xycoords="data")
         axs[2].annotate("Mean: " + str(round(summaryStats2[2], 3)), (3.2, summaryStats2[2]), xycoords="data")
-        axs[2].annotate("StDev: " + str(round(summaryStats2[3]**(.5), 3)), (3.2, summaryStats2[3]**(.5)*.75), xycoords="data")
+        axs[2].annotate("StDev: " + str(round(summaryStats2[3]**(.5), 3)), (3.2, min(x2)+summaryStats2[3]**(.5)*.75), xycoords="data")
         
         axs[2].set_xlim(0, 5)
 
@@ -319,38 +324,156 @@ class Explorer:
         if clusterdata == 'summary':
         
             self.gm = GaussianMixture(n_components=ncomponents, reg_covar=reg_covar).fit(self.getSummaryMatrix())
+            arr = self.gm.predict(self.getSummaryMatrix())
+            clusters = []
+
+            for n in range(ncomponents):
+                clusters.append(list(self.dataset.columns[arr == n]))
+
+            self.clusters = clusters
+    
             return self.gm.predict(self.getSummaryMatrix())
-        
-        elif clusterdata == 'data':
-            self.gm = GaussianMixture(n_components=ncomponents, reg_covar=reg_covar).fit(self.dataset)
-            return self.gm.predict(self.dataset)
-        
-        else:
-            return
-        
+
+        return 
         
         
     def printClusters(self, clusterdata, ncomponents=7, reg_covar=.0001):
         
-        arr = self.getClustering(clusterdata=clusterdata, ncomponents=ncomponents, reg_covar=reg_covar)
-        clusters = []
-
-        for n in range(ncomponents):
-            clusters.append(list(self.dataset.columns[arr == n]))
-
-        return clusters
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+        self.getClustering(clusterdata, ncomponents=7, reg_covar=.0001)
+            
+        for cluster in self.clusters:
+            print(cluster)
+            print()
     
+        return self.clusters
+        
+        
+        
+##### Similar Chocies #####           
+        
+        
+    def selectSimilarColumn(self, col1, method, ncomponents=7, reg_covar=.0001):
+    
+        stats = ["counts", "range", "mean", "variance", "skew"]
+        
+        if method == "cluster":
+            
+            self.getClustering('summary', ncomponents=ncomponents, reg_covar=reg_covar)
+          
+            for cluster in self.clusters:
+                if col1 in cluster:
+                    return cluster
+                
+        elif method in stats:
+            
+            diff = 100000
+            index = -999
+            col1_data = self.summarystats[method][self.dataset.columns.get_loc(col1)]
+            
+            self.getSummaryMatrix()
+            for i, item in enumerate(self.summarystats[method]): 
+                if abs(col1_data - item) < diff and abs(col1_data - item) > .0001:
+                    index = i
+                    diff = abs(col1_data - item)
+                
+            print("most similar column: " + self.dataset.columns[index] + " diff: " + str(round(diff, 6)))
+            
+        return self.dataset.columns[index]
+            
+            
+        
+##### Comparing Subgroup Choices #####  
+
+
+    def getCategoricalChoices(self):
+        
+        arr = []
+        for i, cat in enumerate(self.categories):
+            if cat[:11] == "Categorical":
+                arr.append(self.dataset.columns[i])
+      
+                          
+        return arr
+        
+        
+    def getStatsSubGroup(self, df, col1, printStats=False):
+        
+        x = ~np.isnan(df[col1])
+        z = df[col1] != np.Inf
+        a = x & z 
+        
+        if len(df[col1][a]) == 0:
+            return (-999, -999, -999, -999, -999)
+        
+        #print(df.info())
+        
+        num = len(df[col1][a])
+        ran = abs(max(df[col1][a]) - min(df[col1][a]))
+        tmean = stats.tmean(df[col1][a])
+        variance = stats.tvar(df[col1][a])
+        skew = stats.skew(df[col1][a])
+        
+        if printStats:
+            print("num: ", round(num, 6), ", range: ", round(ran, 6), ", mean: ", round(tmean, 6), 
+                  ", variance: ", round(variance, 6), ", skew: ", round(skew, 6))
+        
+        return  (num, ran, tmean, variance, skew)
+    
+    
+    def getSubGroupsMatrix(self, df, categories, depVar1):
+    
+        matrix = []
+        colortable = dict()
+
+        for c, category in enumerate(categories):
+            for i in np.unique(df[category].dropna()):
+                df_sub = df[df[category] == i]
+                arr = self.getStatsSubGroup(df_sub, depVar1, printStats=False)
+
+                matrix.append([category+"_"+str(i)] + list(arr))
+                colortable[category+"_"+str(i)] = cm.get_cmap('inferno', len(categories))(1/(len(categories)+1)*(c+1))
+               
+        
+        matrix_df = pd.DataFrame(np.array(matrix).transpose()[1:], columns=np.array(matrix).transpose()[0], 
+                                 index=["counts", "range", "mean", "variance", "skew"])
+
+        self.colortable = colortable
+        
+        self.subgroupmatrix = matrix_df
+        
+        return self.subgroupmatrix  
+    
+    
+    def plotSubGroupMatrix(self):
+        
+        from matplotlib.axes._axes import _log as matplotlib_axes_logger
+        matplotlib_axes_logger.setLevel('ERROR')
+        
+        subgroupArr = np.array(self.subgroupmatrix).astype(np.float)
+
+        fig, axs = plt.subplots(1, 5, figsize=(20, 12), sharey=True)
+        fig.tight_layout()
+
+        for i, stat in enumerate(["counts", "range", "mean", "variance", "skew"]):
+
+            
+            for cat in self.categories:
+                
+                for j, item in enumerate(self.subgroupmatrix.columns):
+
+                    axs[i].scatter(subgroupArr[i][j], j, c=self.colortable[item])
+
+            axs[i].grid(b=True, which='major', axis='y', c='gray', alpha=.4, lw=.5)
+            axs[i].set_xlabel(stat)
+            
+        plt.yticks([i for i in range(len(list(self.subgroupmatrix.columns)))], list(self.subgroupmatrix.columns))
+        
+        
+        
+        plt.show()
+
+        return
+
     
     
     
