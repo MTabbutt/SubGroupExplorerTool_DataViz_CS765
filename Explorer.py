@@ -182,18 +182,25 @@ class Explorer:
 ##### Clustering #####    
 
 
-    def getClustering(self, ncomponents=7, reg_covar=.0001):
+    def getClustering(self, clusterdata, ncomponents=7, reg_covar=.0001):
         
-
-        self.gm = GaussianMixture(n_components=ncomponents, reg_covar=reg_covar).fit(self.getSummaryMatrix())
+        if clusterdata == 'summary':
         
-        return self.gm.predict(self.getSummaryMatrix())
+            self.gm = GaussianMixture(n_components=ncomponents, reg_covar=reg_covar).fit(self.getSummaryMatrix())
+            return self.gm.predict(self.getSummaryMatrix())
+        
+        elif clusterdata == 'data':
+            self.gm = GaussianMixture(n_components=ncomponents, reg_covar=reg_covar).fit(self.dataset)
+            return self.gm.predict(self.dataset)
+        
+        else:
+            return
         
         
         
-    def printClusters(self, ncomponents=7, reg_covar=.0001):
+    def printClusters(self, clusterdata, ncomponents=7, reg_covar=.0001):
         
-        arr = self.getClustering()
+        arr = self.getClustering(clusterdata=clusterdata, ncomponents=ncomponents, reg_covar=reg_covar)
         clusters = []
 
         for n in range(ncomponents):
