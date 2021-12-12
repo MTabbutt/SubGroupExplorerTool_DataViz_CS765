@@ -4,6 +4,13 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 
+plt.rcParams.update({'legend.fontsize':'medium', 'font.size':14.0,
+    'axes.titlesize':'large', 'axes.labelsize':'x-large',
+    'xtick.major.size':7,'xtick.minor.size':4,'xtick.major.pad':8,'xtick.minor.pad':8,'xtick.labelsize':'large',
+    'xtick.minor.width':1.0,'xtick.major.width':0.5,
+    'ytick.major.size':7,'ytick.minor.size':4,'ytick.major.pad':8,'ytick.minor.pad':8,'ytick.labelsize':'large',
+    'ytick.minor.width':1.0,'ytick.major.width':1.0})
+
 
 viridis_colors = ['#fde725', '#5ec962', '#21918c', '#3b528b', '#440154']
 
@@ -31,7 +38,15 @@ class Explorer:
         return self.dataset
     
     
-       
+    
+    def setDataFrame(self, df):
+        
+        self.dataset = df
+        
+        return self.dataset
+    
+    
+      
         
 ##### Correlations #####
 
@@ -152,6 +167,9 @@ class Explorer:
         z = self.dataset[col1] != np.Inf
         a = x & z 
         
+        if len(self.dataset[col1][a]) == 0:
+            return (-999, -999, -999, -999, -999)
+        
         num = len(self.dataset[col1][a])
         ran = abs(max(self.dataset[col1][a]) - min(self.dataset[col1][a]))
         tmean = stats.tmean(self.dataset[col1][a])
@@ -178,6 +196,120 @@ class Explorer:
         return pd.DataFrame(summary_matrix, columns=stats, index=self.dataset.columns)
     
     
+    
+    def plotSummaryStats(self, col1, printStats=True):
+        
+        stats = ["counts", "range", "mean", "variance", "skew"]
+        summaryStats = self.getSummaryStats(col1, printStats=printStats)
+        
+        fig, axs = plt.subplots(1, 2, figsize=(12, 8), gridspec_kw={'width_ratios': [3, 3]})
+        
+        # Counts and skew
+        axs[0].hist(self.dataset[col1], bins=20, density=True, color=viridis_colors[2])
+        self.dataset[col1].plot.kde(label="Kernel Density Estimator", color=viridis_colors[4], ax=axs[0])
+        axs[0].legend(loc='best')
+        axs[0].set_xlabel(col1)
+        
+        
+        #Range, mean, variance:
+        axs[1].boxplot(self.dataset[col1])
+        axs[1].set_xlabel(col1)
+        axs[1].set_ylabel("Values")
+        axs[1].set_xlim(-1, 3)
+        axs[1].annotate("Range: " + str(round(summaryStats[2], 3)), (.6, .9), xycoords="figure fraction")
+        
+        #plt.show()
+        
+        
+    def plotSummaryStats(self, col1, printStats=True):
+
+        stats = ["counts", "range", "mean", "variance", "skew"]
+        summaryStats = self.getSummaryStats(col1, printStats=printStats)
+
+        x = self.dataset[col1]
+
+        fig, axs = plt.subplots(1, 2, figsize=(12, 8), gridspec_kw={'width_ratios': [3, 2]})
+        fig.tight_layout()
+
+        # Counts and skew
+        axs[0].hist(x, bins=20, density=True, color=viridis_colors[2], edgecolor="white", linewidth=.2)
+        x.plot.kde(label="Kernel Density Estimator", color=viridis_colors[4], ax=axs[0], linewidth=2)
+        axs[0].legend(loc='upper left')
+        axs[0].set_xlim((min(x)-.1*max(x)), (max(x)+.1*max(x)))
+        axs[0].set_xlabel(col1)
+        axs[0].annotate("Skew: " + str(round(summaryStats[4], 3)), (.2, .8), xycoords="figure fraction")
+
+
+        #Range, mean, variance:
+
+        boxprops = dict(facecolor=viridis_colors[2], alpha=.4)
+        meanprops = dict(linestyle='-', linewidth=2.5, color=viridis_colors[4])
+        medianprops = dict(linestyle='--', linewidth=0, color='white')
+
+        axs[1].boxplot(x, patch_artist=True, meanline=True, showmeans=True, 
+                       meanprops=meanprops, medianprops=medianprops, boxprops=boxprops)
+        axs[1].set_xlabel(col1)
+        axs[1].set_ylabel("Values")
+
+        axs[1].annotate("Range: " + str(round(summaryStats[1], 3)), (1.1, max(x)), xycoords="data")
+        axs[1].annotate("Mean: " + str(round(summaryStats[2], 3)), (1.1, summaryStats[2]), xycoords="data")
+        axs[1].annotate("StDev: " + str(round(summaryStats[3]**(.5), 3)), (1.1, summaryStats[3]**(.5)), xycoords="data")
+
+        return
+    
+    def plotSummaryStatsComparison(self, col1, col2, printStats=True):
+
+        stats = ["counts", "range", "mean", "variance", "skew"]
+        summaryStats1 = self.getSummaryStats(col1, printStats=printStats)
+        summaryStats2 = self.getSummaryStats(col2, printStats=printStats)
+
+        x1 = self.dataset[col1].dropna()
+        x2 = self.dataset[col2].dropna()
+
+        fig, axs = plt.subplots(1, 3, figsize=(17, 8), gridspec_kw={'width_ratios': [3, 3, 3]})
+        fig.tight_layout()
+        
+        # Counts and skew #1
+        axs[0].hist(x1, bins=20, density=True, color=viridis_colors[1], edgecolor="white", linewidth=.2, alpha=.5)
+        x1.plot.kde(label="KDE: "+col1, color=viridis_colors[1], ax=axs[0], linewidth=2)
+        
+        axs[0].legend(loc='upper left')
+        axs[0].set_xlim((min(x1)-.1*max(x1)), (max(x1)+.1*max(x1)))
+        axs[0].set_xlabel(col1)
+        axs[0].annotate("Skew: " + str(round(summaryStats1[4], 3)), (.25, .8), xycoords="figure fraction")
+        
+        
+        # Counts and skew #2
+        axs[1].hist(x2, bins=20, density=True, color=viridis_colors[2], edgecolor="white", linewidth=.2, alpha=.5)
+        x2.plot.kde(label="KDE: "+col2, color=viridis_colors[2], ax=axs[1], linewidth=2)
+        
+        axs[1].legend(loc='upper left')
+        axs[1].set_xlim((min(x2)-.1*max(x2)), (max(x2)+.1*max(x2)))
+        axs[1].set_xlabel(col2)
+        axs[1].annotate("Skew: " + str(round(summaryStats2[4], 3)), (.5, .8), xycoords="figure fraction")
+
+
+        #Range, mean, variance:
+        boxprops = dict(facecolor=viridis_colors[4], alpha=.4)
+        meanprops = dict(linestyle='-', linewidth=2.5, color=viridis_colors[4])
+        medianprops = dict(linestyle='--', linewidth=0, color='white')
+
+        axs[2].boxplot([x1, x2], patch_artist=True, meanline=True, showmeans=True, 
+                       meanprops=meanprops, medianprops=medianprops, boxprops=boxprops, positions=[1, 3])
+        axs[2].set_xlabel(col1 + " and " + col2)
+        axs[2].set_ylabel("Values")
+
+        axs[2].annotate("Range: " + str(round(summaryStats1[1], 3)), (1.2, max(x1)), xycoords="data")
+        axs[2].annotate("Mean: " + str(round(summaryStats1[2], 3)), (1.2, summaryStats1[2]), xycoords="data")
+        axs[2].annotate("StDev: " + str(round(summaryStats1[3]**(.5), 3)), (1.2, summaryStats1[3]**(.5)*.75), xycoords="data")
+        
+        axs[2].annotate("Range: " + str(round(summaryStats2[1], 3)), (3.2, max(x2)), xycoords="data")
+        axs[2].annotate("Mean: " + str(round(summaryStats2[2], 3)), (3.2, summaryStats2[2]), xycoords="data")
+        axs[2].annotate("StDev: " + str(round(summaryStats2[3]**(.5), 3)), (3.2, summaryStats2[3]**(.5)*.75), xycoords="data")
+        
+        axs[2].set_xlim(0, 5)
+
+        return
     
 ##### Clustering #####    
 
