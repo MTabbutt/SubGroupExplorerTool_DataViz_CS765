@@ -16,6 +16,9 @@ plt.rcParams.update({'legend.fontsize':'medium', 'font.size':14.0,
 
 viridis_colors = ['#fde725', '#5ec962', '#21918c', '#3b528b', '#440154']
 
+from matplotlib.axes._axes import _log as matplotlib_axes_logger
+matplotlib_axes_logger.setLevel('ERROR')
+
 
 class Explorer:
     
@@ -42,10 +45,9 @@ class Explorer:
     
     
     
-    def setDataFrame(self, drop=[]):
+    def setDataFrame(self, df):
         
         self.dataset = df
-        self.categories = categories
         
         return self.dataset
     
@@ -224,6 +226,7 @@ class Explorer:
         axs[1].annotate("Range: " + str(round(summaryStats[2], 3)), (.6, .9), xycoords="figure fraction")
         
         #plt.show()
+        return
         
         
     def plotSummaryStats(self, col1, printStats=True):
@@ -394,7 +397,8 @@ class Explorer:
       
                           
         return arr
-        
+    
+   
         
     def getStatsSubGroup(self, df, col1, printStats=False):
         
@@ -431,7 +435,7 @@ class Explorer:
                 arr = self.getStatsSubGroup(df_sub, depVar1, printStats=False)
 
                 matrix.append([category+"_"+str(i)] + list(arr))
-                colortable[category+"_"+str(i)] = cm.get_cmap('inferno', len(categories))(1/(len(categories)+1)*(c+1))
+                colortable[category+"_"+str(i)] = cm.get_cmap('jet', len(categories))(1/(len(categories)+1)*(c+1))
                
         
         matrix_df = pd.DataFrame(np.array(matrix).transpose()[1:], columns=np.array(matrix).transpose()[0], 
@@ -444,35 +448,125 @@ class Explorer:
         return self.subgroupmatrix  
     
     
-    def plotSubGroupMatrix(self):
+    def plotSubGroupMatrix(self, depVar1, categories, subcategories, style="overview"):
         
         from matplotlib.axes._axes import _log as matplotlib_axes_logger
         matplotlib_axes_logger.setLevel('ERROR')
         
         subgroupArr = np.array(self.subgroupmatrix).astype(np.float)
 
-        fig, axs = plt.subplots(1, 5, figsize=(20, 12), sharey=True)
-        fig.tight_layout()
-
-        for i, stat in enumerate(["counts", "range", "mean", "variance", "skew"]):
-
+        self.getSummaryMatrix(printStats=False)
+        base_arr = self.summarystats.loc[depVar1]
+        
+        
+        if style == "overview":
             
-            for cat in self.categories:
+            fy = .25*len(subcategories)+2
+            
+            if len(subcategories) < 16:
+                fy = 6
                 
-                for j, item in enumerate(self.subgroupmatrix.columns):
+            fig, axs = plt.subplots(1, 5, figsize=(18, fy), sharey=True)
+            fig.tight_layout()
 
-                    axs[i].scatter(subgroupArr[i][j], j, c=self.colortable[item])
+            for i, stat in enumerate(["counts", "range", "mean", "variance", "skew"]):
 
-            axs[i].grid(b=True, which='major', axis='y', c='gray', alpha=.4, lw=.5)
-            axs[i].set_xlabel(stat)
+                axs[i].axvline(base_arr[stat], 0, len(list(self.subgroupmatrix.columns)), 
+                               c='k', lw=2, ls="--", alpha=.6, zorder=1)
+                
+                for cat in categories:
+
+                    for j, item in enumerate(subcategories):
+
+                        axs[i].scatter(subgroupArr[i][j], j, c=self.colortable[item], zorder=4, s=75, edgecolors='gray')
+
+                axs[i].grid(b=True, which='major', axis='y', c='gray', alpha=.4, lw=.5, zorder=1)
+                axs[i].set_xlabel(stat)
+
+            plt.yticks([i for i in range(len(list(subcategories)))], 
+                       list(subcategories), fontsize=10)
+            plt.suptitle("Summary Stats Changes for: "+depVar1+ " (baseline in black dashed)", y=1.02)
+
             
-        plt.yticks([i for i in range(len(list(self.subgroupmatrix.columns)))], list(self.subgroupmatrix.columns))
-        
-        
-        
         plt.show()
 
         return
+    
+    
+    
+##### Subgroup comparison plots: #####    
+    
+    
+    def getSubgroupCorrelation(self, df1, df2, col1, col2, plotting=True, alpha=.8):
+        
+        df = df1
+        x, y = ~np.isnan(df[col1]), ~np.isnan(df[col2])
+        z, w = df[col1] != np.Inf, df[col2] != np.Inf
+        a = x & y & z & w
+        
+        corr1 = stats.pearsonr(df[col1][a], df[col2][a])
+        
+        df = df2
+        x, y = ~np.isnan(df[col1]), ~np.isnan(df[col2])
+        z, w = df[col1] != np.Inf, df[col2] != np.Inf
+        a = x & y & z & w
+        
+        corr2 = stats.pearsonr(df[col1][a], df[col2][a])
+        
+        df = None
+        
+        if plotting:
+
+            fig, axs = plt.subplots(1, 2, figsize=(16, 6), sharey=True)
+            fig.tight_layout()
+            
+            axs[0].scatter(df1[col1], df1[col2], c=viridis_colors[3], alpha=alpha, label="r: "+str(round(corr1[0], 6)))
+            axs[0].set_xlabel(col1)
+            axs[0].set_ylabel(col2)
+            axs[0].legend(loc="best")
+            axs[0].title.set_text("Correlation of " + col1 + " and " + col2 + "Subgroup #1")
+            
+            axs[1].scatter(df2[col1], df2[col2], c=viridis_colors[3], alpha=alpha, label="r: "+str(round(corr2[0], 6)))
+            axs[1].set_xlabel(col1)
+            axs[1].legend(loc="best")
+            axs[1].title.set_text("Correlation of " + col1 + " and " + col2 + "Subgroup #2")
+
+        
+        return (corr1, corr2)     
+    
+    
+    
+    
+    def getSpecialPlot1(self, x, y1, y2, df1, df2, cmap="viridis", alpha=.5):
+
+
+        cma = cm.get_cmap(cmap)
+        clist1 = cma(df1[y2]/max(max(df1[y2]), max(df2[y2])))
+        clist2 = cma(df2[y2]/max(max(df1[y2]), max(df2[y2])))
+
+        fig, axs = plt.subplots(1, 2, figsize=(20, 6), sharey=True)
+        fig.tight_layout()
+
+        each = max(1, math.floor(len(df1[y2])/80000))
+        sc = axs[0].scatter(df1[x][::each], df1[y1][::each], c=clist1[::each], s=20, alpha=alpha, marker="^")
+        axs[0].set_ylabel(y1)
+        axs[0].set_xlabel(x)
+
+        axs[1].scatter(df2[x][::each], df2[y1][::each], c=clist2[::each], s=20, alpha=alpha, marker="^")
+        axs[1].set_xlabel(x)
+
+        fig.colorbar(sc, ax=axs[:2], label=y2)
+
+
+        plt.suptitle("Subgroup 1 vs Subgroup 2 Comparison", x=.42, y=1.02)
+        
+        
+        return
+    
+    
+    
+    
+    
 
     
     
