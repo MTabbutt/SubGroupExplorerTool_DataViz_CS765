@@ -563,8 +563,55 @@ class Explorer:
         
         return
     
+    def getSpecialPlot2(self, x, y1, y2, df1, df2, labels, titleOn=True, titles=[], alpha=.85):
+        
+        matplotlib_axes_logger.setLevel('ERROR')
+
+        fig, axs = plt.subplots(1, 2, figsize=(16, 6), sharey=True)
+        fig.tight_layout()
+
+        cat_vals = np.unique(np.array(df1[y2])) & np.unique(np.array(df2[y2]))
+
+        x_1, x_2 = [], []
+        y1_1, y2_1 = [], []
+
+        for val in cat_vals:
+
+            xx1, yy1 = [], []
+            xx2, yy2 = [], []
+            local_df1 = df1[df1[y2] == val]
+            local_df2 = df2[df2[y2] == val]
+
+            for item in np.unique(list(np.unique(local_df1[x])) + list(np.unique(local_df2[x]))):
+
+                xx1.append(item)
+                yy1.append(np.average(local_df1[local_df1[x] == item][y1]))
+                xx2.append(item)
+                yy2.append(np.average(local_df2[local_df2[x] == item][y1]))
+
+            x_1.append(xx1)
+            y1_1.append(yy1)
+            x_2.append(xx2)
+            y2_1.append(yy2)
+
+
+        for nn in range(len(x_1)):
+            axs[0].scatter(x_1[nn], y1_1[nn], s=20, alpha=alpha, label=labels[nn])
+            axs[1].scatter(x_2[nn], y2_1[nn], s=20, alpha=alpha, label=labels[nn])
+
+        axs[0].legend(loc='best')
+        axs[1].legend(loc='best')
+        axs[0].set_ylabel(y1)
+        axs[0].set_xlabel(x)
+
+        axs[1].set_xlabel(x)
+
+        if titleOn:
+            axs[0].set_title(titles[0])
+            axs[1].set_title(titles[1])
     
     
+        return 
     
     
 
