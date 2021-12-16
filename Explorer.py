@@ -342,7 +342,7 @@ class Explorer:
         
     def printClusters(self, clusterdata, ncomponents=7, reg_covar=.0001):
         
-        self.getClustering(clusterdata, ncomponents=7, reg_covar=.0001)
+        self.getClustering(clusterdata, ncomponents=ncomponents, reg_covar=.0001)
             
         for cluster in self.clusters:
             print(cluster)
@@ -537,7 +537,7 @@ class Explorer:
     
     
     
-    def getSpecialPlot1(self, x, y1, y2, df1, df2, cmap="viridis", alpha=.5):
+    def getSpecialPlot1(self, x, y1, y2, df1, df2, cmap="viridis", alpha=.5, maxpts=80000, titleOn=True, titles=[]):
 
 
         cma = cm.get_cmap(cmap)
@@ -547,7 +547,7 @@ class Explorer:
         fig, axs = plt.subplots(1, 2, figsize=(20, 6), sharey=True)
         fig.tight_layout()
 
-        each = max(1, math.floor(len(df1[y2])/80000))
+        each = max(1, math.floor(len(df1[y2])/maxpts))
         sc = axs[0].scatter(df1[x][::each], df1[y1][::each], c=clist1[::each], s=20, alpha=alpha, marker="^")
         axs[0].set_ylabel(y1)
         axs[0].set_xlabel(x)
@@ -556,17 +556,21 @@ class Explorer:
         axs[1].set_xlabel(x)
 
         fig.colorbar(sc, ax=axs[:2], label=y2)
+        
+        if titleOn:
+            axs[0].set_title(titles[0])
+            axs[1].set_title(titles[1])
 
 
-        plt.suptitle("Subgroup 1 vs Subgroup 2 Comparison", x=.42, y=1.02)
+        #plt.suptitle("Subgroup 1 vs Subgroup 2 Comparison", x=.42, y=1.02)
         
         
         return
     
-    def getSpecialPlot2(self, x, y1, y2, df1, df2, labels, titleOn=True, titles=[], alpha=.85):
+    def getSpecialPlot2(self, x, y1, y2, df1, df2, labels, titleOn=True, titles=[], alpha=.85, cmm='viridis'):
         
         matplotlib_axes_logger.setLevel('ERROR')
-
+        
         fig, axs = plt.subplots(1, 2, figsize=(16, 6), sharey=True)
         fig.tight_layout()
 
@@ -596,8 +600,11 @@ class Explorer:
 
 
         for nn in range(len(x_1)):
-            axs[0].scatter(x_1[nn], y1_1[nn], s=20, alpha=alpha, label=labels[nn])
-            axs[1].scatter(x_2[nn], y2_1[nn], s=20, alpha=alpha, label=labels[nn])
+
+            axs[0].scatter(x_1[nn], y1_1[nn], s=20, alpha=alpha, 
+                           label=labels[nn], c=cm.get_cmap(cmm, 256)((256/(len(labels)+1)*(nn+1)/256)))
+            axs[1].scatter(x_2[nn], y2_1[nn], s=20, alpha=alpha, 
+                           label=labels[nn], c=cm.get_cmap(cmm, 256)((256/(len(labels)+1)*(nn+1)/256)))
 
         axs[0].legend(loc='best')
         axs[1].legend(loc='best')
