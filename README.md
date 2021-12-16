@@ -7,12 +7,7 @@ A tool meant to aid in sub group exploration: designed to find interesting and v
 
 - You should be able to import the Explorer.py class and access all methods using standard Python 3
 - The dependanceies are all very standard and are as follows:
-    - pandas
-    - numpy
-    - scipy
-    - matplotlib
-    - sklearn
-    - math
+    - pandas, numpy, scipy, matplotlib, sklearn, math
     
 
 ## Data:
