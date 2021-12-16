@@ -32,9 +32,9 @@ Two different notebooks exist.
 ## Example Multivariate Sub Group Comparison Plots: 
 
 
+![Time spent on house hold activites vs age for males and females colored by Labor Force Status](ExampleOutput1.jpeg)
 
-
-
+![Time spent on Sports/Exercise vs age for males and females colored by Labor Force Status](ExampleOutput2.jpeg)
 
 
 
